@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width,
+        initial-scale=1.0,
+        maximum-scale=1.0,
+        user-scalable=no"
+    >
+
+    <title>Aubrey's iPod</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="manifest" href="manifest.json">
+
+</head>
+
+<body>
+
+    <main class="ipod">
+
+        <!-- YOUR IPOD IMAGE -->
+        <img
+            src="background.jpg"
+            class="ipod-background"
+            alt=""
+        >
+
+        <!-- THE ACTUAL SCREEN -->
+        <section class="screen">
+
+            <!-- LOGIN -->
+            <div id="login-screen">
+
+                <h1>my iPod ♡</h1>
+
+                <p>
+                    Connect your Spotify
+                </p>
+
+                <button
+                    id="spotify-login"
+                    class="spotify-button"
+                >
+                    CONNECT SPOTIFY
+                </button>
+
+            </div>
+
+
+            <!-- APP -->
+            <div
+                id="app-screen"
+                class="hidden"
+            >
+
+                <header class="screen-header">
+
+                    <button
+                        onclick="showPage('home')"
+                    >
+                        MENU
+                    </button>
+
+                    <span id="page-title">
+                        MUSIC
+                    </span>
+
+                </header>
+
+
+                <!-- HOME -->
+
+                <section
+                    id="home"
+                    class="page"
+                >
+
+                    <h2>hello ♡</h2>
+
+                    <p id="username">
+                        Spotify
+                    </p>
+
+                    <div class="menu-list">
+
+                        <button
+                            onclick="showPage('music')"
+                        >
+                            🎵 MUSIC
+                        </button>
+
+                        <button
+                            onclick="showPage('podcasts')"
+                        >
+                            🎙 PODCASTS
+                        </button>
+
+                        <button
+                            onclick="showPage('playlists')"
+                        >
+                            📀 PLAYLISTS
+                        </button>
+
+                        <button
+                            onclick="showPage('repeat')"
+                        >
+                            🔁 ON REPEAT
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                <!-- MUSIC -->
+
+                <section
+                    id="music"
+                    class="page hidden"
+                >
+
+                    <h2>music</h2>
+
+                    <div
+                        id="music-list"
+                        class="media-list"
+                    >
+                        Loading...
+                    </div>
+
+                </section>
+
+
+                <!-- PODCASTS -->
+
+                <section
+                    id="podcasts"
+                    class="page hidden"
+                >
+
+                    <h2>podcasts</h2>
+
+                    <div
+                        id="podcast-list"
+                        class="media-list"
+                    >
+                        Loading...
+                    </div>
+
+                </section>
+
+
+                <!-- PLAYLISTS -->
+
+                <section
+                    id="playlists"
+                    class="page hidden"
+                >
+
+                    <h2>playlists</h2>
+
+                    <div
+                        id="playlist-list"
+                        class="media-list"
+                    >
+                        Loading...
+                    </div>
+
+                </section>
+
+
+                <!-- ON REPEAT -->
+
+                <section
+                    id="repeat"
+                    class="page hidden"
+                >
+
+                    <h2>on repeat</h2>
+
+                    <div
+                        id="repeat-list"
+                        class="media-list"
+                    >
+                        Looking for your On Repeat playlist...
+                    </div>
+
+                </section>
+
+            </div>
+
+        </section>
+
+
+        <!-- INVISIBLE CLICKABLE IPOD CONTROLS -->
+
+        <button
+            class="control menu-control"
+            onclick="showPage('home')"
+        ></button>
+
+        <button
+            class="control previous-control"
+            onclick="previousPage()"
+        ></button>
+
+        <button
+            class="control next-control"
+            onclick="nextPage()"
+        ></button>
+
+    </main>
+
+
+    <script src="spotify.js"></script>
+    <script src="app.js"></script>
+
+</body>
+
+</html>
