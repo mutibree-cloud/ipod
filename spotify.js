@@ -1,10 +1,18 @@
 /*
 ========================================
-SPOTIFY CONFIGURATION
+SPOTIFY CONFIG
 ========================================
 */
 
 const CLIENT_ID = "0b997ede7ff34bd2be3c4b1135fc3627";
+
+
+/*
+IMPORTANT:
+This must EXACTLY match the URL
+registered in your Spotify Developer
+Dashboard.
+*/
 
 const REDIRECT_URI =
     window.location.origin +
@@ -13,7 +21,7 @@ const REDIRECT_URI =
 
 /*
 ========================================
-PERMISSIONS
+SPOTIFY PERMISSIONS
 ========================================
 */
 
@@ -31,50 +39,42 @@ const SCOPES = [
 
 /*
 ========================================
-PKCE HELPERS
+RANDOM STRING
 ========================================
 */
 
-function generateRandomString(length = 128) {
+function generateRandomString(length) {
 
     const characters =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
-    let result = "";
-
-    const randomValues =
+    const values =
         new Uint8Array(length);
 
-    crypto.getRandomValues(randomValues);
+    crypto.getRandomValues(values);
+
+    let result = "";
 
     for (let i = 0; i < length; i++) {
 
         result +=
             characters[
-                randomValues[i] %
+                values[i] %
                 characters.length
             ];
 
     }
 
     return result;
+
 }
 
 
-async function generateCodeChallenge(verifier) {
-
-    const data =
-        new TextEncoder().encode(verifier);
-
-    const digest =
-        await crypto.subtle.digest(
-            "SHA-256",
-            data
-        );
-
-    return base64UrlEncode(digest);
-}
-
+/*
+========================================
+BASE64 URL ENCODING
+========================================
+*/
 
 function base64UrlEncode(buffer) {
 
@@ -83,32 +83,74 @@ function base64UrlEncode(buffer) {
     const bytes =
         new Uint8Array(buffer);
 
-    bytes.forEach(byte => {
+    for (const byte of bytes) {
 
-        binary += String.fromCharCode(byte);
+        binary +=
+            String.fromCharCode(byte);
 
-    });
+    }
 
     return btoa(binary)
         .replace(/\+/g, "-")
         .replace(/\//g, "_")
         .replace(/=+$/, "");
+
 }
 
 
 /*
 ========================================
-LOGIN
+CREATE PKCE CODE CHALLENGE
+========================================
+*/
+
+async function generateCodeChallenge(
+    verifier
+) {
+
+    const data =
+        new TextEncoder().encode(
+            verifier
+        );
+
+    const digest =
+        await crypto.subtle.digest(
+            "SHA-256",
+            data
+        );
+
+    return base64UrlEncode(
+        digest
+    );
+
+}
+
+
+/*
+========================================
+LOGIN TO SPOTIFY
 ========================================
 */
 
 async function loginSpotify() {
 
+    console.log(
+        "Spotify login started"
+    );
+
     try {
 
-        const codeVerifier =
-            generateRandomString();
+        /*
+        Generate PKCE verifier
+        */
 
+        const codeVerifier =
+            generateRandomString(128);
+
+
+        /*
+        Generate challenge
+        */
 
         const codeChallenge =
             await generateCodeChallenge(
@@ -117,54 +159,78 @@ async function loginSpotify() {
 
 
         /*
-        Save verifier so we can use it
-        after Spotify redirects back.
+        Save verifier BEFORE
+        leaving the website.
         */
 
-        sessionStorage.setItem(
+        localStorage.setItem(
             "spotify_code_verifier",
             codeVerifier
         );
 
 
         /*
-        Create a state value for
-        authorization security.
+        Generate security state.
         */
 
         const state =
             generateRandomString(32);
 
 
-        sessionStorage.setItem(
+        localStorage.setItem(
             "spotify_state",
             state
         );
 
 
+        /*
+        Create Spotify authorization URL.
+        */
+
         const params =
             new URLSearchParams({
 
-                response_type: "code",
+                response_type:
+                    "code",
 
-                client_id: CLIENT_ID,
+                client_id:
+                    CLIENT_ID,
 
-                scope: SCOPES,
+                scope:
+                    SCOPES,
 
-                redirect_uri: REDIRECT_URI,
+                redirect_uri:
+                    REDIRECT_URI,
 
-                code_challenge_method: "S256",
+                code_challenge_method:
+                    "S256",
 
-                code_challenge: codeChallenge,
+                code_challenge:
+                    codeChallenge,
 
-                state: state
+                state:
+                    state
 
             });
 
 
-        window.location.href =
+        const spotifyURL =
             "https://accounts.spotify.com/authorize?" +
             params.toString();
+
+
+        console.log(
+            "Spotify redirect:",
+            spotifyURL
+        );
+
+
+        /*
+        Send the user to Spotify.
+        */
+
+        window.location.href =
+            spotifyURL;
 
 
     } catch (error) {
@@ -175,7 +241,8 @@ async function loginSpotify() {
         );
 
         alert(
-            "Could not start Spotify login."
+            "Spotify login failed: " +
+            error.message
         );
 
     }
@@ -185,14 +252,14 @@ async function loginSpotify() {
 
 /*
 ========================================
-EXCHANGE AUTHORIZATION CODE
+EXCHANGE CODE FOR TOKEN
 ========================================
 */
 
 async function exchangeCode(code) {
 
     const verifier =
-        sessionStorage.getItem(
+        localStorage.getItem(
             "spotify_code_verifier"
         );
 
@@ -223,16 +290,17 @@ async function exchangeCode(code) {
                 body:
                     new URLSearchParams({
 
+                        client_id:
+                            CLIENT_ID,
+
                         grant_type:
                             "authorization_code",
 
-                        code: code,
+                        code:
+                            code,
 
                         redirect_uri:
                             REDIRECT_URI,
-
-                        client_id:
-                            CLIENT_ID,
 
                         code_verifier:
                             verifier
@@ -259,14 +327,14 @@ async function exchangeCode(code) {
         throw new Error(
             data.error_description ||
             data.error ||
-            "Spotify authorization failed."
+            "Spotify token exchange failed."
         );
 
     }
 
 
     /*
-    Store tokens.
+    Save access token.
     */
 
     localStorage.setItem(
@@ -274,6 +342,10 @@ async function exchangeCode(code) {
         data.access_token
     );
 
+
+    /*
+    Save refresh token.
+    */
 
     if (data.refresh_token) {
 
@@ -286,25 +358,29 @@ async function exchangeCode(code) {
 
 
     /*
-    Spotify access tokens normally last
-    about one hour.
+    Save expiration time.
     */
 
     if (data.expires_in) {
 
-        const expiration =
-            Date.now() +
-            (data.expires_in * 1000);
-
         localStorage.setItem(
             "spotify_token_expires",
-            expiration
+
+            String(
+                Date.now() +
+                data.expires_in * 1000
+            )
+
         );
 
     }
 
 
-    sessionStorage.removeItem(
+    /*
+    Clean up verifier.
+    */
+
+    localStorage.removeItem(
         "spotify_code_verifier"
     );
 
@@ -328,7 +404,7 @@ async function refreshSpotifyToken() {
     if (!refreshToken) {
 
         throw new Error(
-            "No Spotify refresh token."
+            "No Spotify refresh token available."
         );
 
     }
@@ -371,7 +447,7 @@ async function refreshSpotifyToken() {
 
 
     console.log(
-        "Spotify refresh:",
+        "Spotify refresh response:",
         response.status,
         data
     );
@@ -379,15 +455,10 @@ async function refreshSpotifyToken() {
 
     if (!response.ok) {
 
-        /*
-        Refresh token expired or became invalid.
-        Spotify requires reauthorization in this case.
-        */
-
-        logoutSpotify();
-
         throw new Error(
-            "Spotify authorization expired. Please reconnect."
+            data.error_description ||
+            data.error ||
+            "Spotify token refresh failed."
         );
 
     }
@@ -398,6 +469,11 @@ async function refreshSpotifyToken() {
         data.access_token
     );
 
+
+    /*
+    Spotify may issue a new
+    refresh token.
+    */
 
     if (data.refresh_token) {
 
@@ -411,13 +487,14 @@ async function refreshSpotifyToken() {
 
     if (data.expires_in) {
 
-        const expiration =
-            Date.now() +
-            (data.expires_in * 1000);
-
         localStorage.setItem(
             "spotify_token_expires",
-            expiration
+
+            String(
+                Date.now() +
+                data.expires_in * 1000
+            )
+
         );
 
     }
@@ -445,7 +522,7 @@ async function getSpotifyAccessToken() {
     if (!token) {
 
         throw new Error(
-            "Not connected to Spotify."
+            "You are not connected to Spotify."
         );
 
     }
@@ -460,14 +537,14 @@ async function getSpotifyAccessToken() {
 
 
     /*
-    Refresh if the token is expired
-    or will expire within 5 minutes.
+    Refresh five minutes before
+    expiration.
     */
 
     if (
         expiration &&
         Date.now() >
-        expiration - (5 * 60 * 1000)
+        expiration - 300000
     ) {
 
         return await refreshSpotifyToken();
@@ -486,7 +563,10 @@ SPOTIFY API REQUEST
 ========================================
 */
 
-async function spotifyFetch(endpoint, options = {}) {
+async function spotifyFetch(
+    endpoint,
+    options = {}
+) {
 
     let token =
         await getSpotifyAccessToken();
@@ -514,86 +594,87 @@ async function spotifyFetch(endpoint, options = {}) {
 
 
     /*
-    If token expired unexpectedly,
-    refresh and retry once.
+    Token may have expired even if
+    our expiration time says otherwise.
     */
 
     if (response.status === 401) {
 
-        try {
-
-            token =
-                await refreshSpotifyToken();
+        token =
+            await refreshSpotifyToken();
 
 
-            response =
-                await fetch(
-                    "https://api.spotify.com/v1" +
-                    endpoint,
-                    {
+        response =
+            await fetch(
+                "https://api.spotify.com/v1" +
+                endpoint,
+                {
 
-                        ...options,
+                    ...options,
 
-                        headers: {
+                    headers: {
 
-                            ...(options.headers || {}),
+                        ...(options.headers || {}),
 
-                            Authorization:
-                                `Bearer ${token}`
-
-                        }
+                        Authorization:
+                            `Bearer ${token}`
 
                     }
-                );
 
-        } catch (error) {
-
-            throw error;
-
-        }
+                }
+            );
 
     }
 
 
-    const responseText =
+    const text =
         await response.text();
 
 
     console.log(
-        "Spotify API:",
+        "Spotify API response:",
         response.status,
         endpoint,
-        responseText
+        text
     );
 
 
     if (!response.ok) {
 
-        let errorMessage =
+        let message =
             `Spotify API error ${response.status}`;
 
 
         try {
 
             const errorData =
-                JSON.parse(responseText);
+                JSON.parse(text);
 
 
             if (
                 errorData.error?.message
             ) {
 
-                errorMessage +=
+                message +=
                     `: ${errorData.error.message}`;
+
+            }
+
+            else if (
+                errorData.error
+            ) {
+
+                message +=
+                    `: ${errorData.error}`;
 
             }
 
         } catch {
 
-            if (responseText) {
+            if (text) {
 
-                errorMessage +=
-                    `: ${responseText}`;
+                message +=
+                    `: ${text}`;
 
             }
 
@@ -601,29 +682,27 @@ async function spotifyFetch(endpoint, options = {}) {
 
 
         throw new Error(
-            errorMessage
+            message
         );
 
     }
 
 
-    if (!responseText) {
+    if (!text) {
 
         return {};
 
     }
 
 
-    return JSON.parse(
-        responseText
-    );
+    return JSON.parse(text);
 
 }
 
 
 /*
 ========================================
-GET CURRENT USER
+GET PROFILE
 ========================================
 */
 
@@ -674,7 +753,7 @@ async function getSavedShows(
 
 /*
 ========================================
-GET USER PLAYLISTS
+GET PLAYLISTS
 ========================================
 */
 
@@ -694,15 +773,6 @@ async function getUserPlaylists(
 ========================================
 GET PLAYLIST ITEMS
 ========================================
-
-IMPORTANT:
-Spotify changed this endpoint in 2026.
-
-OLD:
- /playlists/{id}/tracks
-
-NEW:
- /playlists/{id}/items
 */
 
 async function getPlaylistItems(
@@ -720,7 +790,7 @@ async function getPlaylistItems(
 
 /*
 ========================================
-GET RECENTLY PLAYED
+RECENTLY PLAYED
 ========================================
 */
 
@@ -737,7 +807,7 @@ async function getRecentlyPlayed(
 
 /*
 ========================================
-GET CURRENT PLAYBACK
+CURRENT PLAYBACK
 ========================================
 */
 
@@ -762,16 +832,20 @@ async function searchSpotify(
     limit = 20
 ) {
 
-    const encodedQuery =
-        encodeURIComponent(query);
+    const params =
+        new URLSearchParams({
 
+            q: query,
 
-    const encodedTypes =
-        encodeURIComponent(types);
+            type: types,
+
+            limit: limit
+
+        });
 
 
     return await spotifyFetch(
-        `/search?q=${encodedQuery}&type=${encodedTypes}&limit=${limit}`
+        `/search?${params.toString()}`
     );
 
 }
@@ -779,48 +853,7 @@ async function searchSpotify(
 
 /*
 ========================================
-DISCONNECT SPOTIFY
-========================================
-*/
-
-function logoutSpotify() {
-
-    localStorage.removeItem(
-        "spotify_access_token"
-    );
-
-    localStorage.removeItem(
-        "spotify_refresh_token"
-    );
-
-    localStorage.removeItem(
-        "spotify_token_expires"
-    );
-
-    sessionStorage.removeItem(
-        "spotify_code_verifier"
-    );
-
-    sessionStorage.removeItem(
-        "spotify_state"
-    );
-
-
-    /*
-    Return to the app without
-    Spotify's authorization code.
-    */
-
-    window.location.href =
-        window.location.origin +
-        window.location.pathname;
-
-}
-
-
-/*
-========================================
-CHECK LOGIN
+CHECK CONNECTION
 ========================================
 */
 
@@ -835,7 +868,7 @@ function isSpotifyConnected() {
 
 /*
 ========================================
-PROCESS SPOTIFY CALLBACK
+HANDLE SPOTIFY CALLBACK
 ========================================
 */
 
@@ -851,7 +884,7 @@ async function handleSpotifyCallback() {
         params.get("code");
 
 
-    const returnedState =
+    const state =
         params.get("state");
 
 
@@ -860,23 +893,10 @@ async function handleSpotifyCallback() {
 
 
     /*
-    User denied Spotify access.
+    Spotify returned an error.
     */
 
     if (error) {
-
-        console.error(
-            "Spotify authorization error:",
-            error
-        );
-
-
-        window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname
-        );
-
 
         throw new Error(
             `Spotify authorization failed: ${error}`
@@ -897,37 +917,45 @@ async function handleSpotifyCallback() {
 
 
     /*
-    Check state.
+    Verify state.
     */
 
     const savedState =
-        sessionStorage.getItem(
+        localStorage.getItem(
             "spotify_state"
         );
 
 
     if (
         savedState &&
-        returnedState !== savedState
+        state !== savedState
     ) {
 
         throw new Error(
-            "Spotify security check failed."
+            "Spotify security verification failed."
         );
 
     }
 
 
+    /*
+    Exchange authorization code.
+    */
+
     await exchangeCode(code);
 
 
-    sessionStorage.removeItem(
+    /*
+    Remove state.
+    */
+
+    localStorage.removeItem(
         "spotify_state"
     );
 
 
     /*
-    Remove ?code=... from URL.
+    Remove ?code=... from address.
     */
 
     window.history.replaceState(
@@ -944,36 +972,58 @@ async function handleSpotifyCallback() {
 
 /*
 ========================================
-TEST SPOTIFY CONNECTION
+TEST CONNECTION
 ========================================
 */
 
 async function testSpotifyConnection() {
 
-    try {
-
-        const profile =
-            await getSpotifyProfile();
+    const profile =
+        await getSpotifyProfile();
 
 
-        console.log(
-            "Spotify connection successful:",
-            profile
-        );
+    console.log(
+        "Spotify connection successful:",
+        profile
+    );
 
 
-        return profile;
+    return profile;
 
-    } catch (error) {
-
-        console.error(
-            "Spotify connection failed:",
-            error
-        );
+}
 
 
-        throw error;
+/*
+========================================
+LOG OUT
+========================================
+*/
 
-    }
+function logoutSpotify() {
+
+    localStorage.removeItem(
+        "spotify_access_token"
+    );
+
+    localStorage.removeItem(
+        "spotify_refresh_token"
+    );
+
+    localStorage.removeItem(
+        "spotify_token_expires"
+    );
+
+    localStorage.removeItem(
+        "spotify_code_verifier"
+    );
+
+    localStorage.removeItem(
+        "spotify_state"
+    );
+
+
+    window.location.href =
+        window.location.origin +
+        window.location.pathname;
 
 }
