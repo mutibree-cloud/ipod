@@ -18,80 +18,60 @@ function showPage(pageName) {
     document
         .querySelectorAll(".page")
         .forEach(page => {
-
             page.classList.add("hidden");
-
         });
-
 
     const page =
         document.getElementById(pageName);
 
-    if (page) {
+    if (!page) return;
 
-        page.classList.remove("hidden");
-
-    }
-
+    page.classList.remove("hidden");
 
     currentPage =
         pages.indexOf(pageName);
 
-
     const title =
-        document.getElementById(
-            "page-title"
-        );
-
+        document.getElementById("page-title");
 
     if (title) {
-
-        title.textContent =
-            pageName;
+        title.textContent = pageName;
     }
 
 
     if (pageName === "music") {
-
         loadMusic();
-
     }
 
     if (pageName === "podcasts") {
-
         loadPodcasts();
-
     }
 
     if (pageName === "playlists") {
-
         loadPlaylists();
-
     }
 
     if (pageName === "repeat") {
-
         loadOnRepeat();
-
     }
-
 }
 
+
+/* =========================
+   PAGE BUTTONS
+========================= */
 
 function nextPage() {
 
     currentPage++;
 
     if (currentPage >= pages.length) {
-
         currentPage = 0;
-
     }
 
     showPage(
         pages[currentPage]
     );
-
 }
 
 
@@ -100,16 +80,48 @@ function previousPage() {
     currentPage--;
 
     if (currentPage < 0) {
-
-        currentPage =
-            pages.length - 1;
-
+        currentPage = pages.length - 1;
     }
 
     showPage(
         pages[currentPage]
     );
+}
 
+
+/* =========================
+   DISPLAY ERROR
+========================= */
+
+function displaySpotifyError(
+    container,
+    title,
+    error
+) {
+
+    console.error(
+        title,
+        error
+    );
+
+    container.innerHTML = `
+
+        <div class="spotify-error">
+
+            <p>
+                ${escapeHTML(title)}
+            </p>
+
+            <small>
+                ${escapeHTML(
+                    error?.message ||
+                    "Unknown Spotify error."
+                )}
+            </small>
+
+        </div>
+
+    `;
 }
 
 
@@ -124,6 +136,7 @@ async function loadMusic() {
             "music-list"
         );
 
+    if (!container) return;
 
     container.innerHTML =
         "Loading music...";
@@ -140,15 +153,39 @@ async function loadMusic() {
         container.innerHTML = "";
 
 
+        if (
+            !data.items ||
+            data.items.length === 0
+        ) {
+
+            container.innerHTML =
+                "You don't have any saved music.";
+
+            return;
+        }
+
+
         data.items.forEach(item => {
 
             const track =
                 item.track;
 
+            if (!track) return;
+
 
             const image =
-                track.album.images?.[2]?.url ||
-                track.album.images?.[0]?.url ||
+                track.album?.images?.[2]?.url ||
+                track.album?.images?.[0]?.url ||
+                "";
+
+
+            const artists =
+                track.artists
+                    ?.map(
+                        artist =>
+                            artist.name
+                    )
+                    .join(", ") ||
                 "";
 
 
@@ -158,26 +195,25 @@ async function loadMusic() {
 
                     <img
                         src="${image}"
+                        alt=""
                     >
 
                     <div class="media-info">
 
-                        <div
-                            class="media-title"
-                        >
+                        <div class="media-title">
+
                             ${escapeHTML(
                                 track.name
                             )}
+
                         </div>
 
-                        <div
-                            class="media-subtitle"
-                        >
+                        <div class="media-subtitle">
+
                             ${escapeHTML(
-                                track.artists
-                                    .map(a => a.name)
-                                    .join(", ")
+                                artists
                             )}
+
                         </div>
 
                     </div>
@@ -191,10 +227,11 @@ async function loadMusic() {
 
     } catch (error) {
 
-        container.innerHTML =
-            "Could not load your music.";
-
-        console.error(error);
+        displaySpotifyError(
+            container,
+            "Could not load your music.",
+            error
+        );
 
     }
 
@@ -212,6 +249,8 @@ async function loadPodcasts() {
             "podcast-list"
         );
 
+    if (!container) return;
+
 
     container.innerHTML =
         "Loading podcasts...";
@@ -228,10 +267,24 @@ async function loadPodcasts() {
         container.innerHTML = "";
 
 
+        if (
+            !data.items ||
+            data.items.length === 0
+        ) {
+
+            container.innerHTML =
+                "You don't have any saved podcasts.";
+
+            return;
+        }
+
+
         data.items.forEach(item => {
 
             const show =
                 item.show;
+
+            if (!show) return;
 
 
             const image =
@@ -246,24 +299,23 @@ async function loadPodcasts() {
 
                     <img
                         src="${image}"
+                        alt=""
                     >
 
                     <div class="media-info">
 
-                        <div
-                            class="media-title"
-                        >
+                        <div class="media-title">
+
                             ${escapeHTML(
                                 show.name
                             )}
+
                         </div>
 
-                        <div
-                            class="media-subtitle"
-                        >
-                            ${escapeHTML(
-                                show.publisher
-                            )}
+                        <div class="media-subtitle">
+
+                            Podcast
+
                         </div>
 
                     </div>
@@ -277,10 +329,11 @@ async function loadPodcasts() {
 
     } catch (error) {
 
-        container.innerHTML =
-            "Could not load podcasts.";
-
-        console.error(error);
+        displaySpotifyError(
+            container,
+            "Could not load podcasts.",
+            error
+        );
 
     }
 
@@ -298,6 +351,8 @@ async function loadPlaylists() {
             "playlist-list"
         );
 
+    if (!container) return;
+
 
     container.innerHTML =
         "Loading playlists...";
@@ -314,6 +369,18 @@ async function loadPlaylists() {
         container.innerHTML = "";
 
 
+        if (
+            !data.items ||
+            data.items.length === 0
+        ) {
+
+            container.innerHTML =
+                "You don't have any playlists.";
+
+            return;
+        }
+
+
         data.items.forEach(playlist => {
 
             const image =
@@ -322,13 +389,23 @@ async function loadPlaylists() {
                 "";
 
 
+            const itemCount =
+                playlist.items?.total ??
+                0;
+
+
+            const spotifyURL =
+                playlist.external_urls?.spotify ||
+                "#";
+
+
             container.innerHTML += `
 
                 <div
                     class="media-item"
                     onclick="
                         window.open(
-                            '${playlist.external_urls.spotify}',
+                            '${spotifyURL}',
                             '_blank'
                         )
                     "
@@ -336,23 +413,23 @@ async function loadPlaylists() {
 
                     <img
                         src="${image}"
+                        alt=""
                     >
 
                     <div class="media-info">
 
-                        <div
-                            class="media-title"
-                        >
+                        <div class="media-title">
+
                             ${escapeHTML(
                                 playlist.name
                             )}
+
                         </div>
 
-                        <div
-                            class="media-subtitle"
-                        >
-                            ${playlist.items.total}
-                            items
+                        <div class="media-subtitle">
+
+                            ${itemCount} items
+
                         </div>
 
                     </div>
@@ -366,10 +443,11 @@ async function loadPlaylists() {
 
     } catch (error) {
 
-        container.innerHTML =
-            "Could not load playlists.";
-
-        console.error(error);
+        displaySpotifyError(
+            container,
+            "Could not load playlists.",
+            error
+        );
 
     }
 
@@ -387,6 +465,8 @@ async function loadOnRepeat() {
             "repeat-list"
         );
 
+    if (!container) return;
+
 
     container.innerHTML =
         "Looking for On Repeat...";
@@ -401,27 +481,42 @@ async function loadOnRepeat() {
 
 
         const repeat =
-            data.items.find(
+            data.items?.find(
                 playlist =>
                     playlist.name
-                        .toLowerCase()
+                        ?.toLowerCase()
                         .includes("on repeat")
             );
 
 
         if (!repeat) {
 
-            container.innerHTML =
-                `
+            container.innerHTML = `
+
                 <p>
                     I couldn't find your
                     On Repeat playlist.
                 </p>
-                `;
+
+            `;
 
             return;
-
         }
+
+
+        const image =
+            repeat.images?.[0]?.url ||
+            "";
+
+
+        const itemCount =
+            repeat.items?.total ??
+            0;
+
+
+        const spotifyURL =
+            repeat.external_urls?.spotify ||
+            "#";
 
 
         container.innerHTML = `
@@ -430,33 +525,31 @@ async function loadOnRepeat() {
                 class="media-item"
                 onclick="
                     window.open(
-                        '${repeat.external_urls.spotify}',
+                        '${spotifyURL}',
                         '_blank'
                     )
                 "
             >
 
                 <img
-                    src="${
-                        repeat.images?.[0]?.url || ""
-                    }"
+                    src="${image}"
+                    alt=""
                 >
 
                 <div class="media-info">
 
-                    <div
-                        class="media-title"
-                    >
+                    <div class="media-title">
+
                         ${escapeHTML(
                             repeat.name
                         )}
+
                     </div>
 
-                    <div
-                        class="media-subtitle"
-                    >
-                        ${repeat.items.total}
-                        tracks
+                    <div class="media-subtitle">
+
+                        ${itemCount} tracks
+
                     </div>
 
                 </div>
@@ -468,10 +561,11 @@ async function loadOnRepeat() {
 
     } catch (error) {
 
-        container.innerHTML =
-            "Could not load On Repeat.";
-
-        console.error(error);
+        displaySpotifyError(
+            container,
+            "Could not load On Repeat.",
+            error
+        );
 
     }
 
@@ -479,7 +573,7 @@ async function loadOnRepeat() {
 
 
 /* =========================
-   USER
+   USER PROFILE
 ========================= */
 
 async function loadProfile() {
@@ -492,15 +586,28 @@ async function loadProfile() {
             );
 
 
-        document.getElementById(
-            "username"
-        ).textContent =
-            data.display_name ||
-            data.id;
+        const username =
+            document.getElementById(
+                "username"
+            );
+
+
+        if (username) {
+
+            username.textContent =
+                data.display_name ||
+                data.id ||
+                "Spotify";
+
+        }
+
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "PROFILE ERROR:",
+            error
+        );
 
     }
 
@@ -514,7 +621,9 @@ async function loadProfile() {
 function escapeHTML(text) {
 
     const div =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
     div.textContent =
         text || "";
@@ -530,65 +639,152 @@ function escapeHTML(text) {
 
 async function initialize() {
 
-    const params =
-        new URLSearchParams(
-            window.location.search
-        );
+    try {
+
+        /*
+        Handle Spotify's
+        authorization callback.
+        */
+
+        await handleSpotifyCallback();
 
 
-    const code =
-        params.get("code");
+        /*
+        Check whether we have
+        a Spotify login.
+        */
+
+        if (!isSpotifyConnected()) {
+
+            document
+                .getElementById(
+                    "login-screen"
+                )
+                ?.classList.remove(
+                    "hidden"
+                );
+
+            document
+                .getElementById(
+                    "app-screen"
+                )
+                ?.classList.add(
+                    "hidden"
+                );
+
+            return;
+        }
 
 
-    if (code) {
+        /*
+        Verify the token actually works.
+        */
 
-        await exchangeCode(code);
-
-
-        window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname
-        );
-
-    }
+        await testSpotifyConnection();
 
 
-    const token =
-        localStorage.getItem(
-            "spotify_access_token"
-        );
-
-
-    if (token) {
+        /*
+        Spotify connection works.
+        */
 
         document
-            .getElementById("login-screen")
-            .classList.add("hidden");
+            .getElementById(
+                "login-screen"
+            )
+            ?.classList.add(
+                "hidden"
+            );
 
 
         document
-            .getElementById("app-screen")
-            .classList.remove("hidden");
+            .getElementById(
+                "app-screen"
+            )
+            ?.classList.remove(
+                "hidden"
+            );
 
 
         await loadProfile();
 
         showPage("home");
 
+
+    } catch (error) {
+
+        console.error(
+            "APP INITIALIZATION ERROR:",
+            error
+        );
+
+
+        /*
+        Don't silently destroy the session.
+        Show the error so we can diagnose it.
+        */
+
+        const loginScreen =
+            document.getElementById(
+                "login-screen"
+            );
+
+
+        if (loginScreen) {
+
+            loginScreen.classList.remove(
+                "hidden"
+            );
+
+        }
+
+
+        const appScreen =
+            document.getElementById(
+                "app-screen"
+            );
+
+
+        if (appScreen) {
+
+            appScreen.classList.add(
+                "hidden"
+            );
+
+        }
+
+
+        console.error(
+            "FULL SPOTIFY ERROR:",
+            error.message
+        );
+
     }
 
 }
 
 
-/* LOGIN BUTTON */
+/* =========================
+   LOGIN BUTTON
+========================= */
 
-document
-    .getElementById("spotify-login")
-    .addEventListener(
+const loginButton =
+    document.getElementById(
+        "spotify-login"
+    );
+
+
+if (loginButton) {
+
+    loginButton.addEventListener(
         "click",
         loginSpotify
     );
 
+}
+
+
+/* =========================
+   START
+========================= */
 
 initialize();
